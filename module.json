@@ -1,0 +1,28 @@
+{
+  "id": "statexp",
+  "title": "5e Statblock Exporter",
+  "description": "Exports a character statblock to a browser tab.",
+  "authors": [
+    {
+		"name": "blk"
+    }
+  ],
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "9",
+    "verified": "10"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "manifest": "https://raw.githubusercontent.com/foundryvtt/dnd5e/master/system.json",
+        "compatibility": {
+          "minimum": "2.0.3"
+        }
+      }
+    ]
+  },
+  "esmodules": ["src/statexp.js"]
+}
