@@ -27,5 +27,5 @@
   "esmodules": ["src/statblkexp.js"],
   "url": "https://github.com/bkvam/statblkexp",
   "manifest": "https://raw.githubusercontent.com/bkvam/statblkexp/main/module.json",
-  "download": "https://github.com/bkvam/statblkexp/archive/v1.5.7.zip"
+  "download": "https://github.com/bkvam/statblkexp/archive/refs/tags/v1.0.1-beta.zip"
 }
