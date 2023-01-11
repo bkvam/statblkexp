@@ -586,8 +586,9 @@ class BlkStatblockExporter {
 
 		this.dw('<h1>' + name + '</h1>\n');
 
-		if (a.img)
-			this.dw(`<p><img src="${a.img}" alt="${name}" height="200"></p>\n`);
+		let imgwidth = game.settings.get('statblkexp', 'imgwidth');
+		if (a.img && imgwidth)
+			this.dw(`<p><img src="${a.img}" alt="${name}" width="${imgwidth}"></p>\n`);
 
 		let charLevel = 0;
 		
@@ -1046,6 +1047,17 @@ Hooks.once('init', async function () {
 	  default: false,
 	  onChange: value => { // value is the new value of the setting
 		console.log(value)
+	  },
+	});
+	game.settings.register('statblkexp', 'imgwidth', {
+	  name: 'Image Width',
+	  hint: 'Width in pixels of character image. Enter 0 to omit image.',
+	  scope: 'client',     // "world" = sync to db, "client" = local storage
+	  config: true,       // false if you dont want it to show in module config
+	  type: Number,       // Number, Boolean, String, Object
+	  default: 200,
+	  onChange: value => { // value is the new value of the setting
+		console.log('statblkexp: new image width: ' + value)
 	  },
 	});
 });
