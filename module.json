@@ -1,10 +1,10 @@
 {
-  "id": "statexp",
+  "id": "statblkexp",
   "title": "5e Statblock Exporter",
   "description": "Exports a character statblock to a browser tab.",
   "authors": [
     {
-		"name": "blk"
+		"name": "bkvam"
     }
   ],
   "version": "1.0.0",
@@ -24,7 +24,5 @@
       }
     ]
   },
-  "esmodules": ["src/statexp.js"]
-  "manifest": "https://github.com/bkvam/statexp/releases/latest/download/module.json",
-  "download": "https://github.com/bkvam/statexp/releases/download/1.0.0/module.zip"
+  "esmodules": ["src/statblkexp.js"]
 }
