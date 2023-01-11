@@ -575,7 +575,7 @@ class BlkStatblockExporter {
 	exportStatblock(a) {
 		console.log(a);
 		
-		let showDetails = game.settings.get('statexp', 'details');
+		let showDetails = game.settings.get('statblkexp', 'details');
 		let cancel = false;
 
 		let name = a.name;
@@ -887,7 +887,7 @@ class BlkStatblockExporter {
 			const spells = a.items.filter(it => it.type == 'spell');
 			spells.sort((a, b) => (a.name > b.name) ? 1 : -1)
 
-			if (game.settings.get('statexp', 'spellbook')) {
+			if (game.settings.get('statblkexp', 'spellbook')) {
 				spells.forEach((s) => {
 					this.spelldetails(a, s);
 				});
@@ -1026,7 +1026,7 @@ Hooks.on("getActorDirectoryEntryContext", (html, entries) => {
  * Create the configuration setting.
  */
 Hooks.once('init', async function () {
-	game.settings.register('statexp', 'details', {
+	game.settings.register('statblkexp', 'details', {
 	  name: 'Show item details',
 	  hint: 'Shows the long descriptions for items.',
 	  scope: 'client',     // "world" = sync to db, "client" = local storage
@@ -1037,7 +1037,7 @@ Hooks.once('init', async function () {
 		console.log(value)
 	  },
 	});
-	game.settings.register('statexp', 'spellbook', {
+	game.settings.register('statblkexp', 'spellbook', {
 	  name: 'Full Spell Book',
 	  hint: 'Show the full details of all spells.',
 	  scope: 'client',     // "world" = sync to db, "client" = local storage
