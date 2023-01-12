@@ -3,7 +3,7 @@ export let i18n = key => {
 };
 
 
-class BlkStatblockExporter {
+export class BlkStatblockExporter {
 
 	dw(text) {
 	  this.tab.document.write(text);
@@ -23,8 +23,8 @@ class BlkStatblockExporter {
 		return `+${val}`;
 	}
 	
-	style() {
-		this.dw(`
+	static style(tab) {
+		tab.document.write(`
 	<STYLE type="text/css" media="screen,print">
 	
 	blockquote {
@@ -306,7 +306,9 @@ class BlkStatblockExporter {
 	}
 	
 	.secret {
-		font-style: italic;
+		margin-left: .25in;
+		background-color: #eeeeee;
+		border-left: 2px solid gray;
 	}
 
 	</STYLE>
@@ -329,13 +331,13 @@ class BlkStatblockExporter {
 	}
 	
 	sep() {
-		this.dw(`                        <svg height="5" width="100%" class="tapered-rule">
-                            <polyline points="0,0 400,2.5 0,5" stroke="darkred"></polyline>
-                        </svg>`);
+		this.dw(`<svg height="5" width="100%" class="tapered-rule">
+  <polyline points="0,0 400,2.5 0,5" stroke="darkred"></polyline>
+</svg>`);
 	}
 	
 	getskill(a, skill) {
-		let s = CONFIG.DND5E.skills[skill];
+		let s = CONFIG.DND5E.skills[skill].label;
 		// skills = this.cat(skills, ', ', skill);
 		let sval = a.system.skills[skill].value;
 		let abil = a.system.skills[skill].ability;
@@ -439,7 +441,6 @@ class BlkStatblockExporter {
 			if (i < str.length)
 				s += str.substring(i);
 			str = s;
-			console.log('Processed: ' + str);
 		}
 		
 		// Turn [[3d6]] dice rolls into 3d6.
@@ -552,37 +553,42 @@ class BlkStatblockExporter {
 			this.dw(`<p class="exdent"><b>Senses</b> ${s}</p>\n`);
 	}
 
-	header(name) {
-		this.dw(`<!DOCTYPE html>\n<html>\n<body>\n<head>\n<title>${name}</title>`);
-		this.style();
-		this.dw(`\n</head>\n`);
+	static header(tab, name) {
+		tab.document.write(`<!DOCTYPE html>\n<html>\n<body>\n<head>\n<title>${name}</title>`);
+		BlkStatblockExporter.style(tab);
+		tab.document.write(`\n</head>\n`);
 	}
 	
-	footer() {
-		this.tab.document.write("</body></html>");
-		this.tab.document.close();
+	static footer(tab) {
+		tab.document.write("</body></html>");
+		tab.document.close();
 	}
 	
-	createtab() {
-		this.tab = window.open('about:blank', '_blank');
-		if (!this.tab) {
+	static createtab() {
+		let tab = window.open('about:blank', '_blank');
+		if (!tab) {
 			ui.notifications.warn('Unable to open tab in browser');
 			return null;
 		}
-		return this.tab;
+		return tab;
 	}
 
 	exportStatblock(a) {
-		console.log(a);
-		
+		this.tab = BlkStatblockExporter.createtab();
+		if (!this.tab)
+			return false;
+
+		BlkStatblockExporter.header(this.tab, name);
+		this.exportOne(this.tab, a);
+		BlkStatblockExporter.footer(this.tab);
+	}
+	
+	exportOne(tab, a) {
+		this.tab = tab;
 		let showDetails = game.settings.get('statblkexp', 'details');
 		let cancel = false;
 
 		let name = a.name;
-
-		this.createtab();
-
-		this.header(name);
 
 		this.dw('<h1>' + name + '</h1>\n');
 
@@ -794,36 +800,46 @@ class BlkStatblockExporter {
 			weap.forEach((w) => {
 				// Greataxe. Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: (1d12 + 3) slashing damage.
 				let weapdeets = '';
+				if (w.system?.activation.type == 'legendary') {
+					weapdeets = `${w.system.activation.cost} Legendary Action${w.system.activation.cost!=1 ? 's' : ''}`;
+				}
 				let mod = 0;
 				let range = '';
 				switch (w.system.actionType) {
 				case 'mwak':
-					weapdeets = 'Melee Weapon Attack: ';
+				case '':
+					weapdeets = this.cat(weapdeets, ', ', 'Melee Weapon Attack: ');
 					if (w.system.properties.fin)
 						mod = Math.max(a.system.abilities.str.mod, a.system.abilities.dex.mod);
 					else
 						mod = a.system.abilities.str.mod;
 					if (w.system.properties.thr)
 						range = `reach 5 ft or range ${w.system.range.value}/${w.system.range.long} ${w.system.range.units}`;
-					else
+					else if (w.system.range.value != null && w.system.range.units != null )
 						range = `reach ${w.system.range.value} ${w.system.range.units}`;
 					break;
 				case 'rwak':
-					weapdeets = 'Ranged Weapon Attack: ';
+					weapdeets = this.cat(weapdeets, ', ', 'Ranged Weapon Attack: ');
 					mod = a.system.abilities.dex.mod;
 					range = `range ${w.system.range.value}/${w.system.range.long} ${w.system.range.units}`;
 					break;
 				}
-
+				
 				let tohit = Number(w.system.attackBonus) + mod + (w.system.proficient ? this.prof : 0);
-				weapdeets += this.sgn(tohit) + ` to hit, ${range}`;
+				weapdeets = this.cat(weapdeets, ', ', this.sgn(tohit) + ` to hit`);
+				if (range)
+					weapdeets += `, ${range}`;
 				
 				let damage = '';
 				w.system.damage.parts.forEach((d) => {
 					let dmg = this.getDamage(d[0], mod);
-					damage = this.cat(damage, ', ', `${dmg} ${d[1]}`);
+					damage = this.cat(damage, ', plus ', `${dmg} ${d[1]} damage`);
 				});
-				weapdeets += `. Hit: ${damage} damage`;
+				if (damage)
+					weapdeets += `. Hit: ${damage}`;
+				if (w.system?.save.ability) {
+					weapdeets += `, DC ${w.system.save.dc} ${CONFIG.DND5E.abilityAbbreviations[w.system.save.ability]} saving throw`;
+				}
 				let props = '';
 				if (w.system.properties.fin) props = this.cat(props, ', ', 'Finesse');
 				if (w.system.properties.lgt) props = this.cat(props, ', ', 'Light');
@@ -929,7 +945,8 @@ class BlkStatblockExporter {
 				}
 			}
 		}
-		this.footer();
+		
+		return true;
 	}
 	
 	spelldetails(a, s) {
@@ -992,14 +1009,14 @@ class BlkStatblockExporter {
 	}
 	
 	static {
-		console.log("5e statblock exporter loaded.");
+		// console.log("statblkexp | 5e statblock exporter loaded.");
 
 		Hooks.on("init", function() {
-		  // console.log("5e Statblock Exporter initialized.");
+		  // console.log("statblkexp | 5e Statblock Exporter initialized.");
 		});
 
 		Hooks.on("ready", function() {
-		  // console.log("5e statblock ready to accept game data.");
+		  // console.log("statblkexp | 5e statblock ready to accept game data.");
 		});
 	}
 }
@@ -1023,8 +1040,51 @@ Hooks.on("getActorDirectoryEntryContext", (html, entries) => {
     }
 });
 
+
+Hooks.on("renderActorDirectory", (app, html, data) => {
+    console.log("statblkexp | Creating actor tab button");
+
+    const exportButton = $("<button id='statblkexp-button'><i class='fas fa-text'></i></i>Export Statblock</button>");
+    html.find(".directory-footer").append(exportButton);
+
+    exportButton.click(async (ev) => {
+        console.log("statblkexp | button clicked");
+
+		let tokens = canvas.tokens.controlled;
+		if (tokens.length > 0) {
+			tokens.sort(function(a, b) { return a.actor.name < b.actor.name ? -1 : 1; });
+			let tab = BlkStatblockExporter.createtab();
+			if (!tab) {
+				ui.notifications.warn("Unable to create browser tab.");
+				return false;
+			}
+			let name;
+			if (tokens.length == 1)
+				name = tokens[0].actor.name;
+			else
+				name = game.world.title;
+			BlkStatblockExporter.header(tab, name);
+			let token;
+			for (token of tokens)
+				Export(tab, token);
+			BlkStatblockExporter.footer(tab);
+			
+		} else {
+			ui.notifications.warn("No Tokens were selected");
+		}
+
+		function Export(tab, token) {
+			const actor = token.actor;
+			let sbex = new BlkStatblockExporter();
+			if (!sbex.exportOne(tab, actor))
+				ui.notifications.warn(`Unable to export statblock for ${actor.name}`);
+		}
+
+    });
+});
+
 /*
- * Create the configuration setting.
+ * Create the configuration settings.
  */
 Hooks.once('init', async function () {
 	game.settings.register('statblkexp', 'details', {
@@ -1035,7 +1095,7 @@ Hooks.once('init', async function () {
 	  type: Boolean,       // Number, Boolean, String, Object
 	  default: false,
 	  onChange: value => { // value is the new value of the setting
-		console.log(value)
+		console.log('statblkexp | details: ' + value)
 	  },
 	});
 	game.settings.register('statblkexp', 'spellbook', {
@@ -1046,7 +1106,7 @@ Hooks.once('init', async function () {
 	  type: Boolean,       // Number, Boolean, String, Object
 	  default: false,
 	  onChange: value => { // value is the new value of the setting
-		console.log(value)
+		console.log('statblkexp | spellbook: ' + value)
 	  },
 	});
 	game.settings.register('statblkexp', 'imgwidth', {
@@ -1057,7 +1117,7 @@ Hooks.once('init', async function () {
 	  type: Number,       // Number, Boolean, String, Object
 	  default: 200,
 	  onChange: value => { // value is the new value of the setting
-		console.log('statblkexp: new image width: ' + value)
+		console.log('statblkexp | image width: ' + value)
 	  },
 	});
 });
