@@ -13,9 +13,9 @@ There are two ways to export characters:
 
 The following configuration settings are available:
 
-## Show Item Details
+## Show Long Descriptions
 
-Show the long descriptions for items. If unchecked, only the details of the item are shown. The exact details shown vary by type of item (equipment, weapons, class, etc.). Items that are equipped are indicated by a preceding bullet.
+Show the long descriptions for items. If unchecked, only the brief details of the item are shown. The exact details shown vary by type of item (equipment, weapons, class, etc.). Items that are equipped are indicated by a preceding bullet.
 
 Note that the details for some items (classes, races) can be quite lengthy, so you may wish to omit all that boilerpalte.
 
