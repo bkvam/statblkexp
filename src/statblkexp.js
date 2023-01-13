@@ -10,6 +10,21 @@ function cat(str1, delim, str2) {
 	return str1 + delim + str2;
 }
 
+function addbonus(value, b) {
+	switch (typeof b) {
+	case 'number':
+		if (Number(value))
+			return value + b;
+		return `${value} + ${b}`;
+	case 'string':
+		if (b.search(/[^0-9]/) >= 0)
+			return `${value} + ${b}`;
+		if (b)
+			return value + Number(b);
+		return value;
+	}
+	return value;
+}
 
 export class BlkStatblockExporter {
 
@@ -25,9 +40,12 @@ export class BlkStatblockExporter {
 	}
 	
 	sgn(val) {
-		if (val <= 0)
+		if (Number(val) && val <= 0)
 			return val;
-		
+		if (Number(val))
+			return `+${val}`;
+		if (String(val) && val[0] == '-')
+			return val;
 		return `+${val}`;
 	}
 	
@@ -35,16 +53,14 @@ export class BlkStatblockExporter {
 		tab.document.write(`
 	<STYLE type="text/css" media="screen,print">
 	
-	blockquote {
+	blockquote, .secret {
 		font-family: "Trebuchet MS", "Arial", "Helvetica", sans-serif;
 		font-size: 10pt;
-		margin-top: .1in;
-		margin-bottom: .1in;
 		margin-left: .25in;
-		text-indent: .25in;
+		text-indent: 0in;
 		background-color: lightgrey;
 		border: 1px solid gray;
-		padding: 10px;
+		padding: 2px;
 	}
 
 	p.normal {
@@ -196,7 +212,7 @@ export class BlkStatblockExporter {
 	p.spellfirst {
 		font-family: "Trebuchet MS", "Arial", "Helvetica", sans-serif;
 		font-size: 10pt;
-		margin-top: 0.1in;
+		margin-top: 0.05in;
 		margin-bottom: 0in;
 		text-indent: -.25in;
 		margin-left: .25in;
@@ -310,15 +326,9 @@ export class BlkStatblockExporter {
 	}
 	
 	.top-margin {
-		margin-top: .10in;
+		margin-top: 0.05in;
 	}
 	
-	.secret {
-		margin-left: .25in;
-		background-color: #eeeeee;
-		border-left: 2px solid gray;
-	}
-
 	</STYLE>
 `);
 	}
@@ -330,9 +340,9 @@ export class BlkStatblockExporter {
 			bonus = Math.trunc((val - 11) / 2);
 		else
 			bonus = Math.trunc((val - 10) / 2);
-		bonus += Number(a.system.bonuses.abilities.save);
 		if (a.system.abilities[abil].proficient)
 			bonus += this.prof;
+		bonus = addbonus(bonus, this.gsave);
 		if (bonus == 0)
 			return '';
 		return name + ' ' + this.sgn(bonus);
@@ -359,6 +369,8 @@ export class BlkStatblockExporter {
 			value += Math.floor(this.prof/2);
 		if (value == 0)
 			return '';
+		value = addbonus(value, this.gskill);
+		value = addbonus(value, this.gcheck);
 		return s + ' ' + this.sgn(value);
 	}
 	
@@ -577,11 +589,20 @@ export class BlkStatblockExporter {
 		if (!this.tab)
 			return false;
 
-		BlkStatblockExporter.header(this.tab, name);
+		BlkStatblockExporter.header(this.tab, a.name);
 		this.exportOne(this.tab, a);
 		BlkStatblockExporter.footer(this.tab);
 	}
 	
+	gmwak;
+	grwak;
+	gmsak;
+	grsak;
+	gsave;
+	gskill;
+	gspell;
+	gcheck;
+
 	exportOne(tab, a) {
 		this.tab = tab;
 		let showDetails = game.settings.get('statblkexp', 'details');
@@ -597,7 +618,19 @@ export class BlkStatblockExporter {
 
 		let charLevel = 0;
 		let warlockLevel = 0;
+		let spellAbilities = [];
 		
+		// Get global bonuses.
+
+		this.gmwak = a.system.bonuses.mwak;
+		this.grwak = a.system.bonuses.rwak;
+		this.gmsak = a.system.bonuses.msak;
+		this.grsak = a.system.bonuses.rsak;
+		this.gsave = a.system.bonuses.abilities.save;
+		this.gskill = a.system.bonuses.abilities.skill;
+		this.gspell = a.system.bonuses.spell.dc;
+		this.gcheck = a.system.bonuses.abilities.check;
+
 		if (a.type == 'character') {
 			const classes = a.items.filter(it => it.type == 'class');
 			this.dw('<p class="exdent">');
@@ -605,6 +638,10 @@ export class BlkStatblockExporter {
 			classes.forEach((c) => {
 				classList = cat(classList, ', ', c.name + ' ' + c.system.levels);
 				charLevel = charLevel + c.system.levels;
+				if (c.system.spellcasting.ability) {
+					if (spellAbilities.find(abil => abil == c.system?.spellcast?.ability) === undefined)
+						spellAbilities.push(c.system.spellcasting.ability);
+				}
 				switch (c.name) {
 				case 'Warlock':
 					warlockLevel = c.system.levels;
@@ -893,18 +930,37 @@ export class BlkStatblockExporter {
 			this.dw(`<h2>Spells</h2>\n`);
 		
 			let mod = 0;
-			switch (a.system.attributes.spellcasting) {
-			case 'wis':
-				mod = a.system.abilities.wis.mod;
-				break;
-			case 'int':
-				mod = a.system.abilities.int.mod;
-				break;
-			case 'cha':
-				mod = a.system.abilities.cha.mod;
-				break;
+			if (spellAbilities.length > 1) {
+				for (let abil of spellAbilities) {
+					if (abil != a.system.attributes.spellcasting) {
+						switch (abil) {
+						case 'int':
+							mod = a.system.abilities.int.mod;
+							break;
+						case 'wis':
+							mod = a.system.abilities.wis.mod;
+							break;
+						case 'cha':
+							mod = a.system.abilities.cha.mod;
+							break;
+						}
+					}
+					this.dw(`<p class="exdent"><b>${CONFIG.DND5E.abilities[abil]} Spell DC</b> ${8+this.prof+addbonus(mod, this.gspell)}, <b>Spell Attack</b> ${this.sgn(mod+this.prof)}</p>\n`);
+				}
+			} else {
+				switch (a.system.attributes.spellcasting) {
+				case 'wis':
+					mod = a.system.abilities.wis.mod;
+					break;
+				case 'int':
+					mod = a.system.abilities.int.mod;
+					break;
+				case 'cha':
+					mod = a.system.abilities.cha.mod;
+					break;
+				}
+				this.dw(`<p class="exdent"><b>Spell DC</b> ${8+this.prof+addbonus(mod, this.gspell)}, <b>Spell Attack</b> ${this.sgn(mod+this.prof)}</p>\n`);
 			}
-			this.dw(`<p class="exdent"><b>Spell DC</b> ${8+this.prof+mod}, <b>Spell Attack</b> ${this.sgn(mod+this.prof)}</p>\n`);
 			
 			if (warlockLevel > 0)
 				this.warlockspells(a, warlockLevel);
@@ -916,7 +972,7 @@ export class BlkStatblockExporter {
 				for (let level = 1; level < 10; level++) {
 					let slots = a.system.spells['spell' + level].max;
 					if (slots > 0)
-						this.dw(`<p class="exdent"><b>Level ${level}:</b> ${slots} slot${slots == 1 ? '' : 's'}</p>\n`);
+						this.dw(`<p class="exdent"><b>${CONFIG.DND5E.spellLevels[level]}:</b> ${slots} slot${slots == 1 ? '' : 's'}</p>\n`);
 				}
 				
 				spells.forEach((s) => {
@@ -934,7 +990,7 @@ export class BlkStatblockExporter {
 							
 							let sinfo = '';
 							if (s.system.consume.type == "charges") {
-								sinfo = cat(sinfo, ', ', `${s.system.consume.amount} charges`);
+								sinfo = cat(sinfo, ', ', `${s.system.consume.amount} charge${s.system.consume.amount != 1 ? 's' : ''}`);
 							} else if (s.system.preparation.mode == 'atwill') {
 								sinfo = cat(sinfo, ', ', 'at will');
 							} else if (s.system.preparation.mode == 'innate')
@@ -953,8 +1009,8 @@ export class BlkStatblockExporter {
 							slots = ` (${a.system.spells['spell' + level].max})`;
 						}
 
-						let lev = (level == 0) ? 'Cantrip' : `Level ${level}`;
-						this.dw(`<p class="exdent"><b>${lev}</b>${slots}: ${spellList}</p>\n`);
+						// let lev = (level == 0) ? 'Cantrip' : `Level ${level}`;
+						this.dw(`<p class="exdent"><b>${CONFIG.DND5E.spellLevels[level]}</b>${slots}: ${spellList}</p>\n`);
 					}
 				}
 			}
@@ -975,24 +1031,35 @@ export class BlkStatblockExporter {
 	}
 
 	spelldetails(a, s) {
-		this.dw(`<p class="spellhdr">${s.name}</h3>`);
+		this.dw(`<p class="spellhdr">${s.name}</h3>\n`);
 		let school = CONFIG.DND5E.spellSchools[s.system.school];
 
 		let ritual = s.system.components.ritual ? ' (ritual)' : '';
 		if (s.system.level == 0)
 			this.dw(`<p class="italic">${school} cantrip${ritual}</p>\n`);
 		else {
-			let lev = `${s.system.level}th`;
-			switch (s.system.level) {
-			case 1: lev = '1st'; break;
-			case 2: lev = '2nd'; break;
-			case 3: lev = '3rd'; break;
-			}
-			this.dw(`<p class="italic">${lev}-level ${school}${ritual}</p>\n`);
+			this.dw(`<p class="italic">${CONFIG.DND5E.spellLevels[s.system.level]} ${school}${ritual}</p>\n`);
 		}
 			
-		let cond = s.system.activation.condition ? ` (${s.system.activation.condition}` : '';
-		this.dw(`<p class="spellfirst"><b>Casting Time:</b> ${s.system.activation.cost} ${s.system.activation.type}${cond}</p>\n`);
+		let cond = s.system.activation.condition ? ` (${s.system.activation.condition})` : '';
+		let ct = s.system.activation.type;
+		switch (s.system.activation.type) {
+		case 'reactiondamage':
+		case 'reaction':
+			ct = 'Reaction';
+			break;
+		case 'bonus':
+			ct = 'Bonus Action';
+			break;
+		case 'action':
+			ct = 'Action';
+			break;
+		case 'minute':
+			ct = 'Minute';
+			break;
+		}
+		let ccost = s.system.activation.cost;
+		this.dw(`<p class="spellfirst"><b>Casting Time:</b> ${ccost} ${ct}${cond}${ccost!=1?'s':''}</p>\n`);
 		
 		let range = s.system.range.units;
 		if (range == "" && s.system.range.value == 0)
@@ -1011,7 +1078,7 @@ export class BlkStatblockExporter {
 			comp = cat(comp, ', ', 'M');
 		if (s.system.materials.value)
 			comp += ` (${s.system.materials.value})`;
-		this.dw(`<p class="spell"><b>Components:</b> ${comp}`);
+		this.dw(`<p class="spell"><b>Components:</b> ${comp}</p>\n`);
 		
 		let dur = '';
 		switch (s.system.duration.units) {
@@ -1028,9 +1095,9 @@ export class BlkStatblockExporter {
 			else
 				dur = `${s.system.duration.value} ${s.system.duration.units}${plural}`;
 		}
-		this.dw(`<p class="spell"><b>Duration:</b> ${dur}`);
+		this.dw(`<p class="spell"><b>Duration:</b> ${dur}</p>\n`);
 		
-		this.dw('<div class="top-margin">' + this.stripjunk(a, s.system.description.value) + "</div>");
+		this.dw('<div class="top-margin">' + this.stripjunk(a, s.system.description.value) + "</div>\n");
 	}
 	
 	static {
@@ -1117,7 +1184,7 @@ Hooks.on("renderActorDirectory", (app, html, data) => {
  */
 Hooks.once('init', async function () {
 	game.settings.register('statblkexp', 'details', {
-	  name: 'Show item details',
+	  name: 'Show Long Descriptions',
 	  hint: 'Shows the long descriptions for items.',
 	  scope: 'client',     // "world" = sync to db, "client" = local storage
 	  config: true,       // false if you dont want it to show in module config
