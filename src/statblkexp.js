@@ -2,6 +2,14 @@ export let i18n = key => {
 	return game.i18n.localize(key);
 };
 
+function cat(str1, delim, str2) {
+	if (str1 == '')
+		return str2;
+	if (str2 == '')
+		return str1;
+	return str1 + delim + str2;
+}
+
 
 export class BlkStatblockExporter {
 
@@ -338,7 +346,7 @@ export class BlkStatblockExporter {
 	
 	getskill(a, skill) {
 		let s = CONFIG.DND5E.skills[skill].label;
-		// skills = this.cat(skills, ', ', skill);
+		// skills = cat(skills, ', ', skill);
 		let sval = a.system.skills[skill].value;
 		let abil = a.system.skills[skill].ability;
 		let amod = a.system.abilities[abil].mod;
@@ -372,15 +380,6 @@ export class BlkStatblockExporter {
 		return dice;
 	}
 
-	cat(str1, delim, str2) {
-		if (str1 == '')
-			return str2;
-		if (str2 == '')
-			return str1;
-		return str1 + delim + str2;
-	}
-	
-	
 	resolveUUID(a, uuid) {
 		let arr = uuid.split('.');
 		if (arr.length == 4) {
@@ -426,7 +425,7 @@ export class BlkStatblockExporter {
 				// Something like @spell[greater restoration].
 				if (match.groups.tag == 'spell')
 					s += `<i>${match.groups.item}</i>`;
-				else if (match.groups.tag == 'item') {
+				else if (match.groups.item.search('|') >= 0) {
 					const ia = match.groups.item.split('|');
 					if (ia.length == 3)
 						s += ia[2];
@@ -479,20 +478,20 @@ export class BlkStatblockExporter {
 		items.forEach((i) => {
 			let deets = '';
 			if (i.system.quantity != 1 && i.system.quantity != undefined)
-				deets = this.cat(deets, ', ', `x${i.system.quantity}`);
+				deets = cat(deets, ', ', `x${i.system.quantity}`);
 			if (i.system.armor != undefined && i.system.armor.value > 0) {
-				deets = this.cat(deets, ', ', `AC ${i.system.armor.value}`);
+				deets = cat(deets, ', ', `AC ${i.system.armor.value}`);
 				if (i.system.armor.type)
-					deets = this.cat(deets, ', ', i.system.armor.type);
+					deets = cat(deets, ', ', i.system.armor.type);
 				if (i.system.armor.dex != undefined)
-					deets = this.cat(deets, ', ', `Max Dex ${i.system.armor.dex}`);
+					deets = cat(deets, ', ', `Max Dex ${i.system.armor.dex}`);
 			}
 			if (i.system.activation != undefined && i.system.activation.type) {
 				let activation = i.system.activation;
 				if (activation.type == 'special')
-					deets = this.cat(deets, ', ', activation.type);
+					deets = cat(deets, ', ', activation.type);
 				else if (activation.type != 'action')
-					deets = this.cat(deets, ', ', `${activation.cost != 1 ? activation.cost + ' ' : ''}${activation.type} action${activation.cost != 1 ? 's' : ''}`);
+					deets = cat(deets, ', ', `${activation.cost != 1 ? activation.cost + ' ' : ''}${activation.type} action${activation.cost != 1 ? 's' : ''}`);
 			}
 			
 			if (i.system.uses != undefined && i.system.uses.value != null) {
@@ -503,7 +502,7 @@ export class BlkStatblockExporter {
 					case 'lr': per = 'long rest'; break;
 					case 'sr': per = 'short rest'; break;
 					}
-					deets = this.cat(deets, ', ', `uses: ${u.max} per ${per}`);
+					deets = cat(deets, ', ', `uses: ${u.max} per ${per}`);
 				}
 			}
 			let equipped = i.system.equipped ? '&bullet;' : '';
@@ -530,7 +529,7 @@ export class BlkStatblockExporter {
 				let name = fullnames[t];
 				if (name == undefined)
 					name = t;
-				list = this.cat(list, ', ', name);
+				list = cat(list, ', ', name);
 			});
 			this.dw(list);
 			this.dw('</p>\n');
@@ -540,15 +539,15 @@ export class BlkStatblockExporter {
 	displaysenses(senses) {
 		let s = '';
 		if (senses.darkvision)
-			s = this.cat(s, ', ', `Darkvision ${senses.darkvision} ${senses.units}`);
+			s = cat(s, ', ', `Darkvision ${senses.darkvision} ${senses.units}`);
 		if (senses.blindsight)
-			s = this.cat(s, ', ', `Blindsight ${senses.blindsight} ${senses.units}`);
+			s = cat(s, ', ', `Blindsight ${senses.blindsight} ${senses.units}`);
 		if (senses.tremorsense)
-			s = this.cat(s, ', ', `Tremorsense ${senses.tremorsense} ${senses.units}`);
+			s = cat(s, ', ', `Tremorsense ${senses.tremorsense} ${senses.units}`);
 		if (senses.truesight)
-			s = this.cat(s, ', ', `Truesight ${senses.truesight} ${senses.units}`);
+			s = cat(s, ', ', `Truesight ${senses.truesight} ${senses.units}`);
 		if (senses.special)
-			s = this.cat(s, ', ', `${senses.special} ${senses.units}`);
+			s = cat(s, ', ', `${senses.special} ${senses.units}`);
 		if (s != '')
 			this.dw(`<p class="exdent"><b>Senses</b> ${s}</p>\n`);
 	}
@@ -597,14 +596,20 @@ export class BlkStatblockExporter {
 			this.dw(`<p><img src="${a.img}" alt="${name}" width="${imgwidth}"></p>\n`);
 
 		let charLevel = 0;
+		let warlockLevel = 0;
 		
 		if (a.type == 'character') {
 			const classes = a.items.filter(it => it.type == 'class');
 			this.dw('<p class="exdent">');
 			let classList = '';
 			classes.forEach((c) => {
-				classList = this.cat(classList, ', ', c.name + ' ' + c.system.levels);
+				classList = cat(classList, ', ', c.name + ' ' + c.system.levels);
 				charLevel = charLevel + c.system.levels;
+				switch (c.name) {
+				case 'Warlock':
+					warlockLevel = c.system.levels;
+					break;
+				}
 			});
 			this.dw(`${classList} (${a.system.details.xp.value}/${a.system.details.xp.max})</p>\n`);
 		}
@@ -637,7 +642,7 @@ export class BlkStatblockExporter {
 				eff.changes.forEach((c) => {
 					if (c.key == "system.attributes.ac.bonus") {
 						bonuses += Number(c.value);
-						items = this.cat(items, ', ', e.name);
+						items = cat(items, ', ', e.name);
 					}
 				});
 			});
@@ -653,15 +658,15 @@ export class BlkStatblockExporter {
 				case 'light': 
 					base = Math.max(base, e.system.armor.value);
 					maxdex = e.system.armor.dex;
-					items = this.cat(items, ', ', e.name);
+					items = cat(items, ', ', e.name);
 					break;
 				case 'shield':
 					bonuses += e.system.armor.value;
-					items = this.cat(items, ', ', e.name);
+					items = cat(items, ', ', e.name);
 					break;
 				case 'trinket':
 					// FIX: rings & cloaks. bonuses are in the effects.
-					items = this.cat(items, ', ', e.name);
+					items = cat(items, ', ', e.name);
 					break;
 				}
 			});
@@ -672,23 +677,23 @@ export class BlkStatblockExporter {
 			ac = base + dexbonus + bonuses;
 			break;
 		case 'mage':
-			items = this.cat(items, ', ', 'Mage Armor');
+			items = cat(items, ', ', 'Mage Armor');
 			ac = 13 + a.system.abilities.dex.mod + bonuses;
 			break;
 		case 'natural':
-			items = this.cat(items, ', ', 'natural armor');
+			items = cat(items, ', ', 'natural armor');
 			ac = a.system.attributes.ac.flat;
 			break;
 		case 'unarmoredMonk':
-			items = this.cat(items, ', ', 'unarmored monk');
+			items = cat(items, ', ', 'unarmored monk');
 			ac = 10 + a.system.abilities.dex.mod + a.system.abilities.wis.mod + bonuses;
 			break;
 		case 'unarmoredBarb':
-			items = this.cat(items, ', ', 'unarmored barbarian');
+			items = cat(items, ', ', 'unarmored barbarian');
 			ac = 10 + a.system.abilities.dex.mod + a.system.abilities.con.mod + bonuses;
 			break;
 		case 'draconic':
-			items = this.cat(items, ', ', 'draconic resistance');
+			items = cat(items, ', ', 'draconic resistance');
 			ac = 13 + a.system.abilities.dex.mod + bonuses;
 			break;
 		}
@@ -704,13 +709,13 @@ export class BlkStatblockExporter {
 		if (m.walk)
 			speed = `${m.walk} ${m.units}`;
 		if (m.fly)
-			speed = this.cat(speed, ', ', `Fly ${m.fly} ${m.units}${m.hover ? ' (Hover)' : ''}`);
+			speed = cat(speed, ', ', `Fly ${m.fly} ${m.units}${m.hover ? ' (Hover)' : ''}`);
 		if (m.swim)
-			speed = this.cat(speed, ', ', `Swim ${m.swim} ${m.units}`);
+			speed = cat(speed, ', ', `Swim ${m.swim} ${m.units}`);
 		if (m.climb)
-			speed = this.cat(speed, ', ', `Climb ${m.climb} ${m.units}`);
+			speed = cat(speed, ', ', `Climb ${m.climb} ${m.units}`);
 		if (m.burrow)
-			speed = this.cat(speed, ', ', `Burrow ${m.burrow} ${m.units}`);
+			speed = cat(speed, ', ', `Burrow ${m.burrow} ${m.units}`);
 		if (speed == '')
 			speed = 'none';
 		this.dw(`<p class="exdent"><b>Speed</b> ${speed}</p>\n`);
@@ -745,12 +750,12 @@ export class BlkStatblockExporter {
 		this.sep();
 
 		let saves = '';
-		saves = this.cat(saves, ', ', this.getsave(a, 'Str', 'str'));
-		saves = this.cat(saves, ', ', this.getsave(a, 'Dex', 'dex'));
-		saves = this.cat(saves, ', ', this.getsave(a, 'Con', 'con'));
-		saves = this.cat(saves, ', ', this.getsave(a, 'Int', 'int'));
-		saves = this.cat(saves, ', ', this.getsave(a, 'Wis', 'wis'));
-		saves = this.cat(saves, ', ', this.getsave(a, 'Cha', 'cha'));
+		saves = cat(saves, ', ', this.getsave(a, 'Str', 'str'));
+		saves = cat(saves, ', ', this.getsave(a, 'Dex', 'dex'));
+		saves = cat(saves, ', ', this.getsave(a, 'Con', 'con'));
+		saves = cat(saves, ', ', this.getsave(a, 'Int', 'int'));
+		saves = cat(saves, ', ', this.getsave(a, 'Wis', 'wis'));
+		saves = cat(saves, ', ', this.getsave(a, 'Cha', 'cha'));
 		this.dw('<p class="exdent"><b>Saving Throws</b> ' + saves + '</p>\n');
 
 		this.displaysenses(a.system.attributes.senses);
@@ -758,7 +763,7 @@ export class BlkStatblockExporter {
 
 		let skills = '';
 		Object.keys(a.system.skills).forEach((skill) => {
-			skills = this.cat(skills, ', ', this.getskill(a, skill));
+			skills = cat(skills, ', ', this.getskill(a, skill));
 		});
 		this.dw(`<p class="exdent"><b>Skills</b> ${skills}</p>\n`);
 
@@ -808,7 +813,7 @@ export class BlkStatblockExporter {
 				switch (w.system.actionType) {
 				case 'mwak':
 				case '':
-					weapdeets = this.cat(weapdeets, ', ', 'Melee Weapon Attack: ');
+					weapdeets = cat(weapdeets, ', ', 'Melee Weapon Attack: ');
 					if (w.system.properties.fin)
 						mod = Math.max(a.system.abilities.str.mod, a.system.abilities.dex.mod);
 					else
@@ -819,21 +824,21 @@ export class BlkStatblockExporter {
 						range = `reach ${w.system.range.value} ${w.system.range.units}`;
 					break;
 				case 'rwak':
-					weapdeets = this.cat(weapdeets, ', ', 'Ranged Weapon Attack: ');
+					weapdeets = cat(weapdeets, ', ', 'Ranged Weapon Attack: ');
 					mod = a.system.abilities.dex.mod;
 					range = `range ${w.system.range.value}/${w.system.range.long} ${w.system.range.units}`;
 					break;
 				}
 				
 				let tohit = Number(w.system.attackBonus) + mod + (w.system.proficient ? this.prof : 0);
-				weapdeets = this.cat(weapdeets, ', ', this.sgn(tohit) + ` to hit`);
+				weapdeets = cat(weapdeets, ', ', this.sgn(tohit) + ` to hit`);
 				if (range)
 					weapdeets += `, ${range}`;
 				
 				let damage = '';
 				w.system.damage.parts.forEach((d) => {
 					let dmg = this.getDamage(d[0], mod);
-					damage = this.cat(damage, ', plus ', `${dmg} ${d[1]} damage`);
+					damage = cat(damage, ', plus ', `${dmg} ${d[1]} damage`);
 				});
 				if (damage)
 					weapdeets += `. Hit: ${damage}`;
@@ -841,11 +846,11 @@ export class BlkStatblockExporter {
 					weapdeets += `, DC ${w.system.save.dc} ${CONFIG.DND5E.abilityAbbreviations[w.system.save.ability]} saving throw`;
 				}
 				let props = '';
-				if (w.system.properties.fin) props = this.cat(props, ', ', 'Finesse');
-				if (w.system.properties.lgt) props = this.cat(props, ', ', 'Light');
-				if (w.system.properties.thr) props = this.cat(props, ', ', 'Thrown');
+				if (w.system.properties.fin) props = cat(props, ', ', 'Finesse');
+				if (w.system.properties.lgt) props = cat(props, ', ', 'Light');
+				if (w.system.properties.thr) props = cat(props, ', ', 'Thrown');
 				if (w.system.damage.versatile) {
-					props = this.cat(props, ', ', `Versatile ${this.getDamage(w.system.damage.versatile, mod)}`);
+					props = cat(props, ', ', `Versatile ${this.getDamage(w.system.damage.versatile, mod)}`);
 				}
 				if (props != '')
 					weapdeets += ` (${props})`;
@@ -872,15 +877,15 @@ export class BlkStatblockExporter {
 		let currency = '';
 		let curr = a.system.currency;
 		if (curr.pp > 0)
-			currency = this.cat(currency, ', ', `${curr.pp}pp`);
+			currency = cat(currency, ', ', `${curr.pp}pp`);
 		if (curr.gp > 0)
-			currency = this.cat(currency, ', ', `${curr.gp}gp`);
+			currency = cat(currency, ', ', `${curr.gp}gp`);
 		if (curr.sp > 0)
-			currency = this.cat(currency, ', ', `${curr.sp}sp`);
+			currency = cat(currency, ', ', `${curr.sp}sp`);
 		if (curr.ep > 0)
-			currency = this.cat(currency, ', ', `${curr.ep}ep`);
+			currency = cat(currency, ', ', `${curr.ep}ep`);
 		if (curr.cp > 0)
-			currency = this.cat(currency, ', ', `${curr.cp}cp`);
+			currency = cat(currency, ', ', `${curr.cp}cp`);
 		if (currency)
 			this.dw(`<p class="exdent"><b>Currency</b> ${currency}</p>\n`);
 
@@ -901,10 +906,19 @@ export class BlkStatblockExporter {
 			}
 			this.dw(`<p class="exdent"><b>Spell DC</b> ${8+this.prof+mod}, <b>Spell Attack</b> ${this.sgn(mod+this.prof)}</p>\n`);
 			
+			if (warlockLevel > 0)
+				this.warlockspells(a, warlockLevel);
+			
 			const spells = a.items.filter(it => it.type == 'spell');
 			spells.sort((a, b) => (a.name > b.name) ? 1 : -1)
 
 			if (game.settings.get('statblkexp', 'spellbook')) {
+				for (let level = 1; level < 10; level++) {
+					let slots = a.system.spells['spell' + level].max;
+					if (slots > 0)
+						this.dw(`<p class="exdent"><b>Level ${level}:</b> ${slots} slot${slots == 1 ? '' : 's'}</p>\n`);
+				}
+				
 				spells.forEach((s) => {
 					this.spelldetails(a, s);
 				});
@@ -920,14 +934,14 @@ export class BlkStatblockExporter {
 							
 							let sinfo = '';
 							if (s.system.consume.type == "charges") {
-								sinfo = this.cat(sinfo, ', ', `${s.system.consume.amount} charges`);
+								sinfo = cat(sinfo, ', ', `${s.system.consume.amount} charges`);
 							} else if (s.system.preparation.mode == 'atwill') {
-								sinfo = this.cat(sinfo, ', ', 'at will');
+								sinfo = cat(sinfo, ', ', 'at will');
 							} else if (s.system.preparation.mode == 'innate')
-								sinfo = this.cat(sinfo, ', ', 'innate');
+								sinfo = cat(sinfo, ', ', 'innate');
 							if (sinfo != '')
 								sinfo = " (" + sinfo + ")";
-							spellList = this.cat(spellList, ', ', sname + sinfo);
+							spellList = cat(spellList, ', ', sname + sinfo);
 							// if (s.system.preparation.mode == 'prepared' && s.system.preparation.prepared) {
 								// spellList += '*';
 							// }
@@ -949,6 +963,17 @@ export class BlkStatblockExporter {
 		return true;
 	}
 	
+	warlockspells(a, warlockLevel) {
+		let spellsKnown = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15];
+		let spellSlots = [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4];
+		let slotLevel = [0, '1st', '1st', '2nd', '2nd', '3rd', '3rd', '4th', '4th', '5th', '5th', '5th', '5th', '5th', '5th', '5th', '5th', '5th', '5th', '5th', '5th'];
+		let invKnown = [0, '—', 2, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8];
+
+		this.dw(`<p class="exdent"><b>Warlock Spells Known:</b> ${spellsKnown[ml(warlockLevel)]}, ` + 
+			`Spell Slots: ${spellSlots[ml(warlockLevel)]}, Slot Level: ${slotLevel[ml(warlockLevel)]}, ` +
+			`Invocations Known: ${invKnown[ml(warlockLevel)]}</p>\n`);
+	}
+
 	spelldetails(a, s) {
 		this.dw(`<p class="spellhdr">${s.name}</h3>`);
 		let school = CONFIG.DND5E.spellSchools[s.system.school];
@@ -979,11 +1004,11 @@ export class BlkStatblockExporter {
 		
 		let comp = "";
 		if (s.system.components.vocal)
-			comp = this.cat(comp, ', ', 'V');
+			comp = cat(comp, ', ', 'V');
 		if (s.system.components.somatic)
-			comp = this.cat(comp, ', ', 'S');
+			comp = cat(comp, ', ', 'S');
 		if (s.system.components.material)
-			comp = this.cat(comp, ', ', 'M');
+			comp = cat(comp, ', ', 'M');
 		if (s.system.materials.value)
 			comp += ` (${s.system.materials.value})`;
 		this.dw(`<p class="spell"><b>Components:</b> ${comp}`);
@@ -1019,6 +1044,10 @@ export class BlkStatblockExporter {
 		  // console.log("statblkexp | 5e statblock ready to accept game data.");
 		});
 	}
+}
+
+function ml(lev) {
+	return Math.min(20, lev);
 }
 
 Hooks.on("getActorDirectoryEntryContext", (html, entries) => {
