@@ -4,7 +4,7 @@ This is intended primarily for exporting all the details of DnD5e characters to 
 
 *Note:* you must be accessing Foundry with a browser that allows you create tabs. The Foundry VTT app itself does not allow this, so you'll need to access the world from a separate browser.
 
-**How It Works:** A tab is created in the browser and the text of the character's abilities, skills, features, etc., are written to it in HTML format.You can switch to the tab and use the browser's print functionality to print the text to a printer or save to a PDF file. You can also select all the text in the tab and copy it, then paste it to an editor, but the success of this technique is highly dependent on the editor you're pasting the text into.
+**How It Works:** A tab is created in the browser and the text of the character's abilities, skills, features, etc., are written to it in HTML format. You can switch to the tab and use the browser's print functionality to print the text to a printer or save to a PDF file. You can also select all the text in the tab and copy it, then paste it to an editor, but the success of this technique is highly dependent on the editor you're pasting the text into.
 
 There are two ways to export characters:
 
